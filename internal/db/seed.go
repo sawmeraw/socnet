@@ -76,6 +76,29 @@ var tags = [][]string{
 	{"vegan", "BBQ", "recipes"}, {"film", "sound", "creativity"},
 }
 
+var commentsText = []string{
+	"Great post!",
+	"Really insightful, thanks!",
+	"I learned something new today.",
+	"Couldn’t agree more.",
+	"This is so helpful!",
+	"Wow, well said.",
+	"Love the perspective here.",
+	"Such a good read!",
+	"Interesting take on the topic.",
+	"Appreciate you sharing this.",
+	"Nice breakdown.",
+	"This gave me something to think about.",
+	"Thanks for explaining it so clearly.",
+	"Brilliantly put.",
+	"I'm bookmarking this!",
+	"Exactly what I needed.",
+	"So true!",
+	"Absolutely!",
+	"Well articulated.",
+	"Keep it coming!",
+}
+
 func Seed(store store.Storage) {
 	ctx := context.Background()
 
@@ -88,9 +111,42 @@ func Seed(store store.Storage) {
 		}
 	}
 
-	post := generatePosts(100)
+	posts := generatePosts(100, users)
 
-	return nil
+	for _, post := range posts {
+		if err := store.Posts.Create(ctx, post); err != nil {
+			log.Println("Error creating post: ", err)
+			return
+		}
+	}
+
+	comments := generateComments(100, users, posts)
+	for _, comment := range comments {
+
+		if err := store.Comments.Create(ctx, comment); err != nil {
+			log.Println("Error creating comment: ", err)
+			return
+		}
+	}
+
+	log.Println("databaes seeding complete.")
+}
+
+func generateComments(n int, users []*store.User, posts []*store.Post) []*store.Comment {
+	comments := make([]*store.Comment, n)
+
+	for i := 0; i < n; i++ {
+		user := users[rand.Intn(len(users))]
+		post := posts[rand.Intn(len(posts))]
+		comment := commentsText[i%len(commentsText)] + fmt.Sprintf("%d", i)
+		comments[i] = &store.Comment{
+			UserID:  user.ID,
+			PostID:  post.ID,
+			Content: comment,
+		}
+	}
+
+	return comments
 }
 
 func generatePosts(n int, users []*store.User) []*store.Post {
@@ -105,7 +161,6 @@ func generatePosts(n int, users []*store.User) []*store.Post {
 			Content: contents[rand.Intn(len(contents))],
 			Tags:    tags[rand.Intn(len(tags))],
 		}
-
 	}
 
 	return posts

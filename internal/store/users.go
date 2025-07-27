@@ -28,7 +28,7 @@ func (s *UserStore) GetByID(ctx context.Context, id int64) (*User, error) {
 
 	user := &User{}
 
-	if err := s.db.QueryRowContext(ctx, query).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.CreatedAt); err != nil {
+	if err := s.db.QueryRowContext(ctx, query, id).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.CreatedAt); err != nil {
 		switch err {
 		case sql.ErrNoRows:
 			return nil, ErrNotFound

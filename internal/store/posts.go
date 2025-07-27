@@ -14,11 +14,18 @@ type Post struct {
 	Title     string    `json:"title"`
 	UserID    int64     `json:"userId"`
 	Tags      []string  `json:"tags"`
-	CreatedAt string    `json:"createdAt"`
-	UpdatedAt string    `json:"updatedAt"`
+	CreatedAt string    `json:"createdAt,omitempty"`
+	UpdatedAt string    `json:"updatedAt,omitempty"`
 	Version   int       `json:"version"`
 	Comments  []Comment `json:"comments"`
+	User      User      `json:"user"`
 }
+
+type PostWithMetadata struct {
+	Post
+	CommentCount int `json:"comment_count"`
+}
+
 type PostStore struct {
 	db *sql.DB
 }
@@ -118,4 +125,43 @@ func (s *PostStore) Update(ctx context.Context, post *Post) error {
 	}
 
 	return nil
+}
+
+// f.follower_id = p.user_id because we need posts of our followers only or our own posts
+// and obviously we need f.user_id = $1 since we want our followers not others
+func (s *PostStore) GetUserFeed(ctx context.Context, id int64, fq PaginatedFeedQuery) ([]PostWithMetadata, error) {
+	query := `
+		SELECT p.id, p.user_id, u.username, p.title, p.content, p.tags, p.version, p.created_at, COUNT(c.id) AS comments_count
+		FROM posts p
+		LEFT JOIN comments c ON c.post_id = p.id
+		LEFT JOIN users u ON u.id = p.user_id
+		INNER JOIN followers f ON f.follower_id = p.user_id OR p.user_id = $1
+		WHERE f.user_id = $1 OR p.user_id = $1
+		GROUP BY p.id, u.username
+		ORDER BY p.created_at ` + fq.Sort + ` 
+		LIMIT $2 OFFSET $3
+	`
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeoutDuration)
+	defer cancel()
+
+	rows, err := s.db.QueryContext(ctx, query, id, fq.Limit, fq.Offset)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var feed []PostWithMetadata
+
+	for rows.Next() {
+		var post PostWithMetadata
+		err := rows.Scan(&post.ID, &post.UserID, &post.User.Username, &post.Title, &post.Content, pq.Array(&post.Tags), &post.Version, &post.CreatedAt, &post.CommentCount)
+		if err != nil {
+			return nil, err
+		}
+		feed = append(feed, post)
+	}
+
+	return feed, nil
 }

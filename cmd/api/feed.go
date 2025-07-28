@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/sawmeraw/gogo/internal/store"
 )
@@ -9,10 +10,16 @@ import (
 func (app *application) getUserFeedHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	weekAgo := time.Now().AddDate(0, 0, -7)
+
 	fq := store.PaginatedFeedQuery{
 		Limit:  20,
 		Offset: 0,
 		Sort:   "desc",
+		Search: "",
+		Tags:   []string{},
+		Since:  weekAgo.Format(time.DateTime),
+		Until:  time.Now().Format(time.DateTime),
 	}
 
 	fq, err := fq.Parse(r)

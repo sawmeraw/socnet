@@ -133,6 +133,11 @@ func (app *application) usersContextMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		if userID <= 0 {
+			app.badRequestResponse(w, r, store.ErrInvalidArgument)
+			return
+		}
+
 		ctx := r.Context()
 		user, err := app.store.Users.GetByID(ctx, userID)
 		if err != nil {

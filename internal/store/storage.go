@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrNotFound          = errors.New("resource not found")
+	ErrInvalidArgument   = errors.New("invalid argument passed")
 	ErrConflict          = errors.New("resource already exists")
 	ErrNotAllowed        = errors.New("operation not allowed")
 	QueryTimeoutDuration = time.Second * 60

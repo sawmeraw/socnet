@@ -14,22 +14,51 @@ type UserKey string
 
 var userCtx UserKey = "user"
 
+type UserActionPayload struct {
+	UserID int64 `json:"user_id"`
+}
+
+// GetUser godoc
+//
+//	@Summary		Fetches a user profile
+//	@Description	Fetches a user profile by ID
+//	@Tags			users
+//	@Accept			json
+//	@Product		json
+//	@Param			id	path		int	true	"User ID"
+//	@Success		200	{object}	store.User
+//	@Failure		400	{object}	error
+//	@Failure		404	{object}	error
+//	@Failure		500	{object}	error
+//	@Security		ApiKeyAuth
+//	@Router			/users/{id} [get]
 func (app *application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	user := getUserFromContext(r)
 	if err := app.jsonResponse(w, http.StatusOK, user); err != nil {
 		app.statusInternalServerError(w, r, err)
 	}
-
 }
 
+// FollowUser godoc
+//
+//	@Summary		Follow a user
+//	@Description	Follows a user by user ID
+//	@Tags			users
+//	@Accept			json
+//	@Product		json
+//	@Param			userID	path		int					true	"User ID"
+//	@Param			payload	body		UserActionPayload	true	"Follow options"
+//	@Success		204		{string}	string				"User followed"
+//	@Failure		400		{object}	error				"User payload mising"
+//	@Failure		404		{object}	error				"User not found"
+//	@Failure		500		{object}	error				"Internal Server Error"
+//	@Security		ApiKeyAuth
+//	@Router			/users/{userID}/follow [put]
 func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request) {
 	contextUser := getUserFromContext(r)
 
-	type ToFollowUser struct {
-		UserID int64 `json:"user_id"`
-	}
 	//revert back to auth userID from ctx
-	var payload ToFollowUser
+	var payload UserActionPayload
 	if err := readJSON(w, r, &payload); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -56,14 +85,25 @@ func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request
 	statusResponse(w, http.StatusNoContent)
 }
 
+// UnfollowUser godoc
+//
+//	@Summary		Unfollow a user
+//	@Description	Unfollows a user by user ID
+//	@Tags			users
+//	@Accept			json
+//	@Product		json
+//	@Param			userID	path		int					true	"User ID"
+//	@Param			payload	body		UserActionPayload	true	"Follow options"
+//	@Success		204		{string}	string				"User unfollowed"
+//	@Failure		400		{object}	error				"User payload mising"
+//	@Failure		404		{object}	error				"User not found"
+//	@Failure		500		{object}	error				"Internal Server Error"
+//	@Security		ApiKeyAuth
+//	@Router			/users/{userID}/unfollow [put]
 func (app *application) unfollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	contextUser := getUserFromContext(r)
 
-	type ToUnfollowUser struct {
-		UserID int64 `json:"user_id"`
-	}
-
-	payload := ToUnfollowUser{}
+	payload := UserActionPayload{}
 	if err := readJSON(w, r, &payload); err != nil {
 		app.badRequestResponse(w, r, err)
 		return

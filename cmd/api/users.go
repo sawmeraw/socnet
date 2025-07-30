@@ -85,6 +85,25 @@ func (app *application) followUserHandler(w http.ResponseWriter, r *http.Request
 	statusResponse(w, http.StatusNoContent)
 }
 
+func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
+	token := chi.URLParam(r, "token")
+
+	err := app.store.Users.Activate(r.Context(), token)
+	if err != nil {
+		switch err {
+		case store.ErrNotFound:
+			app.badRequestResponse(w, r, err)
+		default:
+			app.statusInternalServerError(w, r, err)
+		}
+		return
+	}
+
+	if err := app.jsonResponse(w, http.StatusNoContent, ""); err != nil {
+		app.statusInternalServerError(w, r, err)
+	}
+}
+
 // UnfollowUser godoc
 //
 //	@Summary		Unfollow a user

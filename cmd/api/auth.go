@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/sawmeraw/gogo/internal/store"
 )
 
@@ -12,6 +15,11 @@ type RegisterUserPayload struct {
 	Password string `json:"password" validate:"required,min=3,max=72"`
 }
 
+type UserWithToken struct {
+	*store.User
+	Token string `json:"token"`
+}
+
 // RegisterUser godoc
 //
 //	@Summary		Registers a user
@@ -19,10 +27,10 @@ type RegisterUserPayload struct {
 //	@Tags			authentication
 //	@Accept			json
 //	@Product		json
-//	@Param			payload	bod		RegisterUserPayload	true	"User credentials"
-//	@Success		200	{object}	store.User "User Registered"
-//	@Failure		400	{object}	error
-//	@Failure		500	{object}	error
+//	@Param			payload	body		RegisterUserPayload	true	"User credentials"
+//	@Success		200		{object}	UserWithToken		"User Registered"
+//	@Failure		400		{object}	error
+//	@Failure		500		{object}	error
 //	@Router			/auth/user [post]
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -50,8 +58,30 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// ctx := r.Context()
-	if err := app.jsonResponse(w, http.StatusCreated, nil); err != nil {
+	ctx := r.Context()
+	plainToken := uuid.New().String()
+
+	hash := sha256.Sum256([]byte(plainToken))
+	hashToken := hex.EncodeToString(hash[:])
+
+	if err := app.store.Users.CreateAndInvite(ctx, user, hashToken, app.config.mail.exp); err != nil {
+		switch err {
+		case store.ErrDuplicateEmail:
+			app.badRequestResponse(w, r, err)
+		case store.ErrDuplicateUsername:
+			app.badRequestResponse(w, r, err)
+		default:
+			app.statusInternalServerError(w, r, err)
+		}
+		return
+	}
+
+	userWithToken := UserWithToken{
+		User:  user,
+		Token: plainToken,
+	}
+
+	if err := app.jsonResponse(w, http.StatusCreated, userWithToken); err != nil {
 		app.statusInternalServerError(w, r, err)
 	}
 

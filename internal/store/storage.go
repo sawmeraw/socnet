@@ -12,6 +12,8 @@ var (
 	ErrInvalidArgument   = errors.New("invalid argument passed")
 	ErrConflict          = errors.New("resource already exists")
 	ErrNotAllowed        = errors.New("operation not allowed")
+	ErrDuplicateEmail    = errors.New("duplicate email found")
+	ErrDuplicateUsername = errors.New("duplicate username found")
 	QueryTimeoutDuration = time.Second * 60
 )
 
@@ -24,8 +26,10 @@ type Storage struct {
 		GetUserFeed(context.Context, int64, PaginatedFeedQuery) ([]PostWithMetadata, error)
 	}
 	Users interface {
-		Create(context.Context, *User) error
+		Create(context.Context, *sql.Tx, *User) error
 		GetByID(context.Context, int64) (*User, error)
+		CreateAndInvite(context.Context, *User, string, time.Duration) error
+		Activate(context.Context, string) error
 	}
 	Comments interface {
 		GetByPostID(context.Context, int64) ([]Comment, error)
@@ -44,4 +48,18 @@ func NewStorage(db *sql.DB) Storage {
 		Comments:  &CommentStore{db},
 		Followers: &FollowerStore{db},
 	}
+}
+
+func withTx(db *sql.DB, ctx context.Context, fn func(*sql.Tx) error) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	//call the function with the transaction
+	if err := fn(tx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	//commit if no error
+	return tx.Commit()
 }

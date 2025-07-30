@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/sawmeraw/gogo/internal/db"
@@ -51,6 +52,9 @@ func main() {
 		},
 		env:    env.GetString("ENV", "development"),
 		apiURL: env.GetString("EXTERNAL_URL", "localhost:3000"),
+		mail: mailConfig{
+			exp: time.Hour * 24 * 3, //3 days
+		},
 	}
 
 	//Logger

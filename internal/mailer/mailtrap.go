@@ -50,7 +50,7 @@ func (m mailtrapClient) Send(templateFile, username, email string, data any, isS
 
 	message.AddAlternative("text/html", body.String())
 
-	dialer := gomail.NewDialer("sandbox.smtp.mailtrap.io", 587, "", "")
+	dialer := gomail.NewDialer("sandbox.smtp.mailtrap.io", 587, "api", m.apiKey)
 
 	if err := dialer.DialAndSend(message); err != nil {
 		return -1, err

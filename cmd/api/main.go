@@ -7,6 +7,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sawmeraw/gogo/internal/db"
 	"github.com/sawmeraw/gogo/internal/env"
+	"github.com/sawmeraw/gogo/internal/mailer"
 	"github.com/sawmeraw/gogo/internal/store"
 	"go.uber.org/zap"
 )
@@ -54,7 +55,12 @@ func main() {
 		apiURL: env.GetString("EXTERNAL_URL", "localhost:3000"),
 		mail: mailConfig{
 			exp: time.Hour * 24 * 3, //3 days
+			mailTrap: mailTrapConfig{
+				apiKey: env.GetString("MAILTRAP_APIKEY", ""),
+			},
+			fromEmail: env.GetString("FROM_EMAIL", ""),
 		},
+		frontendURL: env.GetString("FRONTEND_URL", "http://localhost:4000"),
 	}
 
 	//Logger
@@ -71,10 +77,15 @@ func main() {
 	logger.Info("database connection pool established")
 
 	store := store.NewStorage(db)
+	mailer, err := mailer.NewMailTrapClient(cfg.mail.mailTrap.apiKey, cfg.mail.fromEmail)
+	if err != nil {
+		log.Fatal(err)
+	}
 	app := &application{
 		config: cfg,
 		store:  store,
 		logger: logger,
+		mailer: mailer,
 	}
 
 	mux := app.mount()
